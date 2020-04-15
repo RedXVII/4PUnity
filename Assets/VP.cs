@@ -23,6 +23,8 @@ public class VP : MonoBehaviour
     int charState = 0;
     bool queued = false;
 
+    public System.Random randomGen = new System.Random();
+
     void Start()
 	{
         
@@ -127,26 +129,26 @@ public class VP : MonoBehaviour
                 nxtChar = randomChar();
                 break;
             case 10:
-                nxtAnim = nextAnim();
+                nxtAnim = nextAnim(nxtChar);
                 break;
             case 20:
-                nxtAnim = randomAnim();
+                nxtAnim = randomAnim(nxtChar);
                 break;
             case 11:
                 nxtChar = nextChar();
-                nxtAnim = nextAnim();
+                nxtAnim = nextAnim(nxtChar);
                 break;
             case 22:
                 nxtChar = randomChar();
-                nxtAnim = randomAnim();
+                nxtAnim = randomAnim(nxtChar);
                 break;
             case 12:
                 nxtChar = randomChar();
-                nxtAnim = nextAnim();
+                nxtAnim = nextAnim(nxtChar);
                 break;
             case 21:
                 nxtChar = nextChar();
-                nxtAnim = randomAnim();
+                nxtAnim = randomAnim(nxtChar);
                 break;
         }
         if (state != 0)
@@ -282,15 +284,14 @@ public class VP : MonoBehaviour
         }
     }
 
-    int nextAnim()
+    int nextAnim(string nxtChar)
     {
-        return (curAnim + 1 >= ModLoader.charMods[charList[charIndex]].Count) ? 0 : (curAnim + 1);
+        return (curAnim + 1 >= ModLoader.charMods[nxtChar].Count) ? 0 : (curAnim + 1);
     }
 
-    int randomAnim()
+    int randomAnim(string nxtChar)
     {
-        System.Random r = new System.Random();
-        return r.Next(ModLoader.charMods[charList[charIndex]].Count);
+        return randomGen.Next(ModLoader.charMods[nxtChar].Count);
     }
 
     string nextChar()
@@ -301,8 +302,7 @@ public class VP : MonoBehaviour
 
     string randomChar()
     {
-        System.Random r = new System.Random();
-        charIndex = r.Next(charList.Count);
+        charIndex = randomGen.Next(charList.Count);
         return charList[charIndex];
     }
 
