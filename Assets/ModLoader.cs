@@ -26,7 +26,7 @@ public class ModLoader : MonoBehaviour
 
         if (Application.platform != RuntimePlatform.Android)
         {
-            modsDir = Application.dataPath + "/../mods/";
+            modsDir = @"E:\PKJP2\4PUnityPlayer\mods\";
             charDirs = Directory.GetDirectories(modsDir, "CHAR_*");
             if (!Directory.Exists(modsDir + "/../logs"))
             {

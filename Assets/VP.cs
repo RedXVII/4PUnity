@@ -23,6 +23,9 @@ public class VP : MonoBehaviour
     int charState = 0;
     bool queued = false;
 
+    float lastUpdateMusicTime = 0.0f;
+    bool shouldPlayNextVp = false;
+
     public System.Random randomGen = new System.Random();
 
     void Start()
@@ -31,89 +34,114 @@ public class VP : MonoBehaviour
     }
 
     private bool m_isAxisInUse = false;
+
+    void init()
+    {
+        GameObject camera = GameObject.Find("Main Camera");
+        vp1 = camera.AddComponent<VideoPlayer>();
+        vp1.waitForFirstFrame = true;
+        vp1.isLooping = true;
+        vp1.aspectRatio = VideoAspectRatio.FitVertically;
+        vp1.audioOutputMode = VideoAudioOutputMode.Direct;
+        vp1.SetDirectAudioVolume(0, 1);
+        vp1.url = ModLoader.charMods[curChar][curAnim];
+        vp1.prepareCompleted += Prepared;
+        vp1.Prepare();
+        
+        
+
+        vp2 = camera.AddComponent<VideoPlayer>();
+        vp2.waitForFirstFrame = true;
+        vp2.isLooping = true;
+        vp2.aspectRatio = VideoAspectRatio.FitVertically;
+        vp2.audioOutputMode = VideoAudioOutputMode.Direct;
+        vp2.SetDirectAudioVolume(0, 1);
+        vp2.url = ModLoader.charMods[curChar][curAnim];
+        vp1.prepareCompleted += Prepared;
+        vp2.Prepare();
+
+        curVp = vp2;
+        prevVp = vp1;
+
+        GameObject.Find("Main Camera").GetComponent<AudioSource>().Play();
+        playCurrent();
+        createButtons();
+
+        shouldPlayNextVp = false;
+        lastUpdateMusicTime = 0.0f;
+
+        first = false;
+
+    }
+
+    public void Prepared(VideoPlayer vp)
+    {
+        //vp.SetDirectAudioMute(0, true);
+        //vp.Pause();
+    }
+
     void Update()
     {
-        if (ModLoader.loaded)
+        if (!ModLoader.loaded)
         {
-            int newAnim = curAnim;
+            return;
+        }
+        int newAnim = curAnim;
+        {
+            if (Input.GetAxisRaw("Horizontal") != 0)
             {
-                if (Input.GetAxisRaw("Horizontal") != 0)
+                if (m_isAxisInUse == false)
                 {
-                    if (m_isAxisInUse == false)
+                    if (Input.GetAxis("Horizontal") > 0)
                     {
-                        if (Input.GetAxis("Horizontal") > 0)
-                        {
-                            newAnim = (curAnim == ModLoader.charMods[curChar].Count - 1) ? 0 : (curAnim + 1);
-                        }
-                        else if (Input.GetAxis("Horizontal") < 0)
-                        {
-                            newAnim = (curAnim == 0) ? ModLoader.charMods[curChar].Count - 1 : (curAnim - 1);
-                        }
-                        m_isAxisInUse = true;
-                        PoseSwitch(curChar, newAnim);
+                        newAnim = (curAnim == ModLoader.charMods[curChar].Count - 1) ? 0 : (curAnim + 1);
                     }
-                }
-                if (Input.GetAxisRaw("Horizontal") == 0)
-                {
-                    m_isAxisInUse = false;
+                    else if (Input.GetAxis("Horizontal") < 0)
+                    {
+                        newAnim = (curAnim == 0) ? ModLoader.charMods[curChar].Count - 1 : (curAnim - 1);
+                    }
+                    m_isAxisInUse = true;
+                    PoseSwitch(curChar, newAnim);
                 }
             }
-
-            if (first)
+            if (Input.GetAxisRaw("Horizontal") == 0)
             {
-                GameObject camera = GameObject.Find("Main Camera");
-                //ModLoader.LoadMods();
-                //playCurrent();
-                vp1 = camera.AddComponent<VideoPlayer>();
-                vp1.waitForFirstFrame = true;
-                vp1.isLooping = true;
-                vp1.aspectRatio = VideoAspectRatio.FitVertically;
-                vp1.loopPointReached += Looped;
-                vp1.prepareCompleted += Prepared;
-                vp1.audioOutputMode = VideoAudioOutputMode.Direct;
-                vp1.SetDirectAudioVolume(0, 1);
-                vp1.url = ModLoader.charMods[curChar][curAnim];
-                vp1.Prepare();
-
-                vp2 = camera.AddComponent<VideoPlayer>();
-                vp2.waitForFirstFrame = true;
-                vp2.isLooping = true;
-                vp2.aspectRatio = VideoAspectRatio.FitVertically;
-                vp2.loopPointReached += Looped;
-                vp2.prepareCompleted += Prepared;
-                vp2.audioOutputMode = VideoAudioOutputMode.Direct;
-                vp2.SetDirectAudioVolume(0, 1);
-                vp2.url = ModLoader.charMods[curChar][curAnim];
-                vp2.Prepare();
-
-                curVp = vp2;
-                prevVp = vp1;
-
-                GameObject.Find("Main Camera").GetComponent<AudioSource>().Play();
-                playCurrent();
-                createButtons();
-
-
-                first = false;
-                //AudioSource src = GameObject.Find("Main Camera").GetComponent<AudioSource>();
-                //src.Play();
-                //double time = src.time % 4;
-                //curVp = vps[curChar][curAnim];
-                //curVp.Play();
-                //curVp.time = time;
-                //curVp.targetCameraAlpha = 1f;
-                //createButtons();
+                m_isAxisInUse = false;
             }
         }
+
+        if (first)
+        {
+            init();
+        }
+
+        float currentMusicTime = GameObject.Find("Main Camera").GetComponent<AudioSource>().time % 4;
+        if (lastUpdateMusicTime > currentMusicTime)
+        {
+            shouldPlayNextVp = true;
+        }
+        lastUpdateMusicTime = currentMusicTime;
+
+       
+        if (shouldPlayNextVp)
+        {
+            if (curVp.isPrepared)
+            {
+                prepNext = true;
+                //playCurrent();
+                calculateNextAnimation();
+                shouldPlayNextVp = false;
+            }
+        }
+
     }
 
     void FixedUpdate() {
         
     }
 
-    public void Looped(VideoPlayer vp)
+    void calculateNextAnimation()
     {
-        float delta = GameObject.Find("Main Camera").GetComponent<AudioSource>().time % 4;
         int state = charState + poseState * 10;
         Debug.Log("Loop state: " + state);
         string nxtChar = curChar;
@@ -153,30 +181,10 @@ public class VP : MonoBehaviour
         }
         if (state != 0)
         {
-            prepNext = true;
-            if (curVp.isPrepared)
-            {
-                PoseSwitch(curChar, curAnim);
-                prepareNext(nxtChar, nxtAnim);
-            }
+            prepareNext(nxtChar, nxtAnim);
         }
     }
 
-    public void Prepared(VideoPlayer vp)
-    {
-        if (!prepNext)
-        {
-            curVp.Play();
-            double time = GameObject.Find("Main Camera").GetComponent<AudioSource>().time % 4;
-            curVp.time = time;
-            prevVp.Pause();
-        } else
-        {
-            curVp.Pause();
-            prevVp.Play();
-        }
-        //Debug.Log(vp.isPrepared);
-    }
 
     public void PoseSwitch(string ch, int anim)
     {
@@ -216,14 +224,21 @@ public class VP : MonoBehaviour
 
     void playCurrent()
     {
+        Debug.Log("PLAY CURRENT");
         if (!prepNext)
         {
             switchVp();
             curVp.url = ModLoader.charMods[curChar][curAnim];
             curVp.Prepare();
-        } else
+            shouldPlayNextVp = true;
+            Debug.Log("Play Current, prepnext = false");
+        }
+        else
         {
+            Debug.Log("pausing something, anything");
             curVp.Play();
+            double time = GameObject.Find("Main Camera").GetComponent<AudioSource>().time % 4.0;
+            curVp.time = time;
             curVp.targetCameraAlpha = 1f;
             prevVp.Pause();
             prevVp.targetCameraAlpha = 0f;
@@ -238,6 +253,8 @@ public class VP : MonoBehaviour
         curAnim = anim;
         curVp.url = ModLoader.charMods[curChar][curAnim];
         curVp.Prepare();
+        curVp.SetDirectAudioMute(0, false);
+        prevVp.SetDirectAudioMute(0, true);
         prepNext = false;
     }
 
@@ -331,6 +348,7 @@ public class VP : MonoBehaviour
             int k = i;
             animButton.GetComponent<Button>().onClick.AddListener(() => {
                 PoseSwitch(curChar, k);
+                shouldPlayNextVp = true;
             });
             i += 1;
             animButton.GetComponentInChildren<Text>().text = i.ToString();
